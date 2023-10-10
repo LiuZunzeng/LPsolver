@@ -1,2 +1,2 @@
 # LPsolver
-Replicate the classical optimization algorithm
+Simplex method and affine scaling method
