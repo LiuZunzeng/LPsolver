@@ -269,21 +269,16 @@ class Model:
         row_num = len(self.A)
         col_num = len(self.A[0])
 
+        # build an internal initial solution
         solution = [0 for i in range(col_num)]
-        #for i in range(row_num):
-            #solution[self.basicVars[i]] = self.b[i]
-        for nonbasicVar in self.nonbasicVars:
 
+        for nonbasicVar in self.nonbasicVars:
             solution[nonbasicVar] = 0.2
 
         for i in range(row_num):
-
             sum = 0
-
             for j in self.nonbasicVars:
-
                 sum += solution[j] * self.A[i][j]
-
             solution[self.basicVars[i]] = self.b[i] - sum
 
         #solution = [0.1, 0.1, 1.8, 1]
@@ -291,25 +286,26 @@ class Model:
 
         X = np.diagflat([solution])
         print("X:", X)
+
         inverseMatrix = np.linalg.inv(np.dot(np.dot(self.A, np.dot(X, X)), self.A.T))
-        print("inverseMatrix:", inverseMatrix)
-        print("A", self.A)
-        print("c", self.c)
         p = np.dot(np.dot(np.dot(inverseMatrix, self.A), np.dot(X, X)), self.c)
         print("p:",p)
+
         r = self.c - np.dot(self.A.T, p)
         print("r:", r)
+
         e = np.array([1 for i in range(col_num)])
         gap = np.dot(np.dot(e, X), r)
         print("initial gap:", gap)
-        d = np.dot(np.dot(-X, X), r)
-        print("d:", d)
+
+        # Maximum acceptable clearance
         eps = 1e-3
+        # set tolerance
         tolerance = -1e-6
+        # set scaling number
         beta = 0.995
+
         iterNum = 1
-
-
 
         while(gap >= eps or not (r >= tolerance).all()):
 
@@ -317,15 +313,19 @@ class Model:
 
             d = np.dot(np.dot(-X, X), r)
             print("direction vector:", d)
+
             if((d >= 0).all()):
+                # if the direction vector > 0，the solution is unbounded
                 self.solutionStatus = "Unbounded solution"
                 break
+
             else:
                 step = beta/np.linalg.norm(d)
                 ratio = [ 99999 for i in range(col_num)]
 
                 print("step size:", step)
 
+                # use minimum ratio method to limit the step size
                 for i in range(len(solution)):
                     if(d[i] < 0):
                         ratio[i] = -solution[i] / d[i]
@@ -333,22 +333,25 @@ class Model:
                 if(step > min(ratio)):
                     step = min(ratio)
 
+                # update the current solution
                 for i in range(len(solution)):
                     solution[i] = solution[i] + step * d[i]
-
                 print("new solution:", solution)
+
                 X = np.diagflat([solution])
+                # p is the dual solution
                 p = np.dot(
                     np.dot(np.dot(np.dot(np.linalg.inv(np.dot(np.dot(self.A, np.dot(X, X)), self.A.T)), self.A), X), X),
                     self.c)
-                print("c:", self.c)
-                print("A'", self.A.T)
-                print("p:",p)
+                # r is the checkout numbers vector
                 r = self.c - np.dot(self.A.T, p)
                 print("r:",r)
+
                 e = np.array([1 for i in range(col_num)])
+                # gap = primal bound - dual bound
                 gap = np.dot(np.dot(e, X), r)
                 print("gap:", gap)
+
                 if (direction == "min"):
                     z_opt = np.dot(self.c, solution)
                 if (direction == "max"):
@@ -379,6 +382,7 @@ class Model:
             print("solution_status:", self.solutionStatus)
 
 if __name__ == '__main__':
+    # Test example
     '''
             min z = -3 * x_1 + x_2 + x_3
     subject to:
@@ -420,7 +424,7 @@ if __name__ == '__main__':
                        4 * x_2             + x_5 = 12   
                          x_1, x_2, x_3, x_4, x_5 >= 0      
     '''
-    #'''
+    '''
     m = Model()
     m.build(valueVector=[2, 3, 0, 0, 0],
             coefficientMatrix=[[1, 2, 1, 0, 0]
@@ -428,7 +432,7 @@ if __name__ == '__main__':
              , [0, 4, 0, 0, 1]],
             resourceVector=[8, 16, 12])
     m.optimize("max", method="interior")
-    #'''
+    '''
     '''
                 max z = x_1 + 2 * x_2 
         subject to:
@@ -438,14 +442,14 @@ if __name__ == '__main__':
         standard form:
                 min z = - x_1 - 2 * x_2
         subject to:
-                    x_1 + x_2 + x_3 = 2
+                    x_1 + x_2 + x_3       = 2
                   - x_1 + x_2       + x_4 = 3
     '''
-    '''
+    #'''
     m = Model()
     m.build(valueVector=[1, 2, 0, 0],
             coefficientMatrix=[[1, 1, 1, 0]
              , [-1, 1, 0, 1]],
             resourceVector=[2, 1])
-    m.optimize("max", method="simplex")
-    '''
+    m.optimize("max", method="interior")
+    #'''
